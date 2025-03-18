@@ -13,7 +13,43 @@ const Dailysew = () => {
         location: '',
         line: '',
     });
-    const [userInputs, setUserInputs] = useState({}); // To store user inputs for each PO
+    const [userInputs, setUserInputs] = useState({});
+    const [summaryData, setSummaryData] = useState([]);
+
+    // Fetch summary data
+    useEffect(() => {
+        axios.get('http://localhost:3000/auth/sumoutput')
+            .then(response => {
+                if (response.data.success) {
+                    setSummaryData(response.data.data);
+                } else {
+                    console.error('Failed to fetch summary data');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching summary data:', error);
+            });
+
+        axios.get('http://localhost:3000/auth/viewprodcolor')
+            .then(response => {
+                setSapOptions(response.data);
+            })
+            .catch(error => console.error('Error fetching product colors:', error));
+    }, []);
+
+// Calculate balskin based on the formula
+    const calculateBalskin = (po, poSummary) => {
+    const skin = po.skin || 0; // Ensure skin is defined, default to 0
+    const qty = po.qty || 0; // Ensure qty is defined, default to 0
+    const Sum_skinqty = poSummary ? poSummary.Sum_skinqty || 0 : 0; // Ensure Sum_skinqty is defined, default to 0
+
+    if (skin > 0) {
+        return qty - Sum_skinqty;
+    } else {
+        return 0;
+    }
+    };
+
 
     // Handle changes in line inputs
     const handleLineChange = (index, event) => {
@@ -82,7 +118,7 @@ const Dailysew = () => {
 
     const saveoutput = async (event) => {
         event.preventDefault();
-    
+
         // Prepare data for submission
         const recordsToSave = poList.map(po => {
             const sapData = sapOptions.find(option => option.SAP_id === po.sap); // Find sapData for the current PO
@@ -102,17 +138,36 @@ const Dailysew = () => {
                 packqty: userInputs[po.id]?.packqty || 0
             };
         });
-    
+
         try {
             const response = await axios.post('http://localhost:3000/auth/savedailyoutput', recordsToSave);
             if (response.data.success) {
                 alert('Output data saved successfully!');
+
+                // Reset state
                 setOutputData({
                     prodate: '',
                     location: '',
                     line: '',
                 });
                 setUserInputs({}); // Reset user inputs
+
+                // Re-fetch data
+                axios.get('http://localhost:3000/auth/sumoutput')
+                    .then(response => {
+                        if (response.data.success) {
+                            setSummaryData(response.data.data);
+                        } else {
+                            console.error('Failed to fetch summary data');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching summary data:', error);
+                    });
+
+                axios.get(`http://localhost:3000/auth/posearch?q=${searchQuery}`)
+                    .then(response => setPoList(response.data))
+                    .catch(error => console.error('Error searching POs:', error));
             } else {
                 alert('Failed to save output data.');
             }
@@ -122,20 +177,21 @@ const Dailysew = () => {
         }
     };
 
-    useEffect(() => {
-        axios.get('http://localhost:3000/auth/viewprodcolor')
-            .then(response => {
-                setSapOptions(response.data);
-            })
-            .catch(error => console.error('Error fetching product colors:', error));
-    }, []);
-
     const handleSearch = (event) => {
         setSearchQuery(event.target.value);
         axios.get(`http://localhost:3000/auth/posearch?q=${event.target.value}`)
             .then(response => setPoList(response.data))
             .catch(error => console.error('Error searching POs:', error));
     };
+
+    // Function to calculate balance values
+   //const calculateBalance = (po, poSummary) => {
+        //const balskin = po.skin > 0 ? po.qty - (poSummary ? poSummary.Sum_skinqty : 0) : 0;
+        //const balcase = po.kase > 0 ? po.qty - (poSummary ? poSummary.Sum_caseqty : 0) : 0;
+        //const balpack = po.qty - (poSummary ? poSummary.Sum_packqty : 0);
+
+        //return { balskin, balcase, balpack };
+    //};
 
     return (
         <div className="po-container">
@@ -278,6 +334,9 @@ const Dailysew = () => {
                             <div className="po-list">
                                 {poList.map((po) => {
                                     const sapData = sapOptions.find(option => option.SAP_id === po.sap);
+                                    const poSummary = summaryData.find(summary => summary.id === po.id);
+                                    const balskin = calculateBalskin(po, poSummary);
+                                    //const { balskin, balcase, balpack } = calculateBalance(po, poSummary);
 
                                     return (
                                         <div key={po.id} className="po-item">
@@ -331,19 +390,52 @@ const Dailysew = () => {
                                             </div>
                                             <div className="po-field">
                                                 <label>Total Skin</label>
-                                                <input type="text" readOnly />
+                                                <input
+                                                    type="number"
+                                                    name="Sum_skinqty"
+                                                    value={poSummary ? poSummary.Sum_skinqty : 0}
+                                                    readOnly
+                                                />
                                                 <label>Total Case</label>
-                                                <input type="text" readOnly />
+                                                <input
+                                                    type="number"
+                                                    name="Sum_caseqty"
+                                                    value={poSummary ? poSummary.Sum_caseqty : 0}
+                                                    readOnly
+                                                />
                                                 <label>Total Pack</label>
-                                                <input type="number" readOnly />
+                                                <input
+                                                    type="number"
+                                                    name="Sum_packqty"
+                                                    value={poSummary ? poSummary.Sum_packqty : 0}
+                                                    readOnly
+                                                />
                                             </div>
                                             <div className="po-field">
                                                 <label>Balance Skin</label>
-                                                <input type="text" readOnly />
+                                                <input
+                                                    type="number"
+                                                    name='balskin'
+                                                    value={balskin}
+                                                    readOnly
+                                                    style={{ backgroundColor: balskin < 0 ? 'red' : 'white' }}
+                                                />
                                                 <label>Balance Case</label>
-                                                <input type="text" readOnly />
+                                                <input
+                                                    type="number"
+                                                    name='balcase'
+                                                    value=''
+                                                    readOnly
+                                                    
+                                                />
                                                 <label>Balance Pack</label>
-                                                <input type="number" readOnly />
+                                                <input
+                                                    type="number"
+                                                    name='balpack'
+                                                    value=''
+                                                    readOnly
+                                                   
+                                                />
                                             </div>
                                             <div className="po-field">
                                                 <label>Daily Skin Output</label>
