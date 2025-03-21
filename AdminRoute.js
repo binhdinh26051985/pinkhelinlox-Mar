@@ -698,5 +698,62 @@ router.post('/savedailyoutput', (req, res) => {
   });
 });
 
+router.get('/sumoutput', (req, res) => {
+  const sql = `
+      SELECT 
+          vp.id, 
+          vp.vendorpo, 
+          vp.poRemark, 
+          vp.factory, 
+          vp.poDate, 
+          vp.orderType, 
+          vp.orderCycle, 
+          vp.season, 
+          vp.sap, 
+          vp.product, 
+          vp.color, 
+          vp.qty, 
+          vp.delivery, 
+          vp.destination, 
+          vp.customerpo, 
+          vp.remark, 
+          vp.planmark, 
+          vp.mat_eta, 
+          vp.mat_done, 
+          vp.ppm, 
+          vp.ppmdone, 
+          vp.cut, 
+          vp.cutdone, 
+          vp.print_emb, 
+          vp.print_embdone, 
+          vp.skinloc, 
+          vp.skinline, 
+          vp.skinsewer, 
+          vp.skinworkhrs, 
+          vp.skinput, 
+          vp.skinouput, 
+          vp.kaseloc, 
+          vp.kaseline, 
+          vp.kasesewers, 
+          vp.kaseworkhrs, 
+          vp.kaseinput, 
+          vp.kaseouput,
+          so.Sum_skinqty, 
+          so.Sum_caseqty, 
+          so.Sum_packqty
+      FROM vendorpo vp
+      LEFT JOIN summary_output so ON vp.id = so.orderid;
+  `;
+
+  con.query(sql, (err, results) => {
+      if (err) {
+          console.error('Error fetching summary output:', err);
+          return res.status(500).json({ success: false, error: "Database error" });
+      }
+      res.json({ success: true, data: results });
+  });
+});
+
 
 export{ router as adminRouter}
+
