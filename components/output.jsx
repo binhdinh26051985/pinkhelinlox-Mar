@@ -37,20 +37,6 @@ const Dailysew = () => {
             .catch(error => console.error('Error fetching product colors:', error));
     }, []);
 
-// Calculate balskin based on the formula
-    const calculateBalskin = (po, poSummary) => {
-    const skin = po.skin || 0; // Ensure skin is defined, default to 0
-    const qty = po.qty || 0; // Ensure qty is defined, default to 0
-    const Sum_skinqty = poSummary ? poSummary.Sum_skinqty || 0 : 0; // Ensure Sum_skinqty is defined, default to 0
-
-    if (skin > 0) {
-        return qty - Sum_skinqty;
-    } else {
-        return 0;
-    }
-    };
-
-
     // Handle changes in line inputs
     const handleLineChange = (index, event) => {
         const { name, value } = event.target;
@@ -185,13 +171,21 @@ const Dailysew = () => {
     };
 
     // Function to calculate balance values
-   //const calculateBalance = (po, poSummary) => {
-        //const balskin = po.skin > 0 ? po.qty - (poSummary ? poSummary.Sum_skinqty : 0) : 0;
-        //const balcase = po.kase > 0 ? po.qty - (poSummary ? poSummary.Sum_caseqty : 0) : 0;
+    //const calculateBalance = (po, poSummary) => {
+        //const balskin = po.qty - (poSummary ? poSummary.Sum_skinqty : 0);
+        //const balcase = po.qty - (poSummary ? poSummary.Sum_caseqty : 0);
         //const balpack = po.qty - (poSummary ? poSummary.Sum_packqty : 0);
 
         //return { balskin, balcase, balpack };
     //};
+    // Function to calculate balance values
+    const calculateBalance = (po, poSummary, sapData) => {
+        const balskin = sapData && sapData.skin > 0 ? po.qty - (poSummary ? poSummary.Sum_skinqty : 0) : 0;
+        const balcase = sapData && sapData.kase > 0 ? po.qty - (poSummary ? poSummary.Sum_caseqty : 0) : 0;
+        const balpack = po.qty - (poSummary ? poSummary.Sum_packqty : 0);
+
+        return { balskin, balcase, balpack };
+    };
 
     return (
         <div className="po-container">
@@ -335,7 +329,7 @@ const Dailysew = () => {
                                 {poList.map((po) => {
                                     const sapData = sapOptions.find(option => option.SAP_id === po.sap);
                                     const poSummary = summaryData.find(summary => summary.id === po.id);
-                                    const balskin = calculateBalskin(po, poSummary);
+                                    const { balskin, balcase, balpack } = calculateBalance(po, poSummary, sapData);
                                     //const { balskin, balcase, balpack } = calculateBalance(po, poSummary);
 
                                     return (
@@ -424,17 +418,17 @@ const Dailysew = () => {
                                                 <input
                                                     type="number"
                                                     name='balcase'
-                                                    value=''
+                                                    value={balcase}
                                                     readOnly
-                                                    
+                                                    style={{ backgroundColor: balcase < 0 ? 'red' : 'white' }}
                                                 />
                                                 <label>Balance Pack</label>
                                                 <input
                                                     type="number"
                                                     name='balpack'
-                                                    value=''
+                                                    value={balpack}
                                                     readOnly
-                                                   
+                                                    style={{ backgroundColor: balpack < 0 ? 'red' : 'white' }}
                                                 />
                                             </div>
                                             <div className="po-field">
